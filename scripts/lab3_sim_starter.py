@@ -17,7 +17,9 @@ class OdometryPublisher:
 
         # Subscriber to the /gazebo/model_states topic.
         # see https://docs.ros.org/en/noetic/api/gazebo_msgs/html/msg/ModelStates.html
-        self.model_states_sub = rospy.Subscriber("/gazebo/model_states", ModelStates, self.model_states_callback)
+        self.model_states_sub = rospy.Subscriber(
+            "/gazebo/model_states", ModelStates, self.model_states_callback
+        )
 
         self.x = 0.0
         self.y = 0.0
@@ -41,6 +43,9 @@ class OdometryPublisher:
 
         ######### Your code starts here #########
         # add odometry equations to calculate robot's self.x, self.y, self.theta given encoder values
+        if dt == 0:
+            return
+
         self.theta += self.vth * dt
 
         delta_x = self.vx * math.cos(self.theta) * dt
@@ -50,7 +55,7 @@ class OdometryPublisher:
         self.y += delta_y
 
         ######### Your code ends here #########
-        
+
         odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.theta)
 
         odom = Odometry()
@@ -68,7 +73,6 @@ class OdometryPublisher:
         odom.twist.twist.linear.x = self.vx
         odom.twist.twist.linear.y = self.vy
         odom.twist.twist.angular.z = self.vth
-
 
         self.odom_pub.publish(odom)
         self.last_time = self.current_time
