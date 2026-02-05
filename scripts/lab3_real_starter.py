@@ -56,7 +56,24 @@ class OdometryPublisher:
 
         ######### Your code starts here #########
         # add odometry equations to calculate robot's self.x, self.y, self.theta given encoder values
+        delta_left = self.left_encoder - self.last_left_encoder
+        delta_right = self.right_encoder - self.last_right_encoder
 
+        self.last_left_encoder = self.left_encoder
+        self.last_right_encoder = self.right_encoder
+
+        delta_left_rad = delta_left * self.TICK_TO_RAD
+        delta_right_rad = delta_right * self.TICK_TO_RAD
+
+        delta_sl = self.wheel_radius * delta_left_rad
+        delta_sr = self.wheel_radius * delta_right_rad
+
+        delta_s = (delta_sr + delta_sl) / 2.0
+        delta_theta = (delta_sr - delta_sl) / self.wheel_separation
+
+        self.x += delta_s * math.cos(self.theta + delta_theta / 2.0)
+        self.y += delta_s * math.sin(self.theta + delta_theta / 2.0)
+        self.theta += delta_theta
         ######### Your code ends here #########
 
         odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.theta)
