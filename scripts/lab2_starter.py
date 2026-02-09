@@ -1,44 +1,54 @@
 #!/usr/bin/env python3
+
 import rospy
-from time import sleep, time
-from turtlebot3_msgs.msg import SensorState
+from geometry_msgs.msg import Twist
 
 
-class Cliff:
-    """
-    Prints the measured value from the attached DMS-80 Distance Sensor.
+class TurtlebotController:
 
-    The DMS-80 should be connected to the 'ROBOTIS_5-PIN 2' pin (shown here:
-    https://emanual.robotis.com/docs/en/parts/controller/opencr10/#robotis-5-pin-connector). The 'cliff' value of the
-    SensorState object holds the measurement. See this link for more information:
-    https://emanual.robotis.com/docs/en/platform/turtlebot3/additional_sensors/#ir
-    """
+    def __init__(self):
+        rospy.init_node("turtlebot_controller", anonymous=True)
+        self.cmd_vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+        self.rate = rospy.Rate(10)  # 10 Hz
+        rospy.sleep(1)
 
-    def __init__(self, print_dt: float = 0.5):
-        self.cliff_sub = rospy.Subscriber("/sensor_state", SensorState, self.sensor_state_callback, queue_size=1)
-        self.print_dt = print_dt
-        self.t_last_print = time()
+        # Motion parameters
+        self.linear_speed = 0.2   # m/s
+        self.distance = 1.0       # meters (100 cm)
 
-    def sensor_state_callback(self, state: SensorState):
-        if self.t_last_print + self.print_dt > time():
-            return
-        self.t_last_print = time()
-        raw = state.cliff
-        distance = 0.0  # TODO: fit function mapping raw to distance
+    def publish_twist(self, move_cmd, duration):
+        end_time = rospy.Time.now() + rospy.Duration(duration)
+        while rospy.Time.now() < end_time and not rospy.is_shutdown():
+            self.cmd_vel_pub.publish(move_cmd)
+            self.rate.sleep()
 
-        ######### Your code starts here #########
-        # calculation from raw sensor value to distance (Step 3.3 of lab)
-        
-        ######### Your code ends here #########
+    def stop_turtlebot(self):
+        move_cmd = Twist()
+        move_cmd.linear.x = 0.0
+        move_cmd.angular.z = 0.0
+        self.publish_twist(move_cmd, 1)
 
-        print(f"raw: {raw}\tdistance: {distance}")
+    def move_forward_100cm(self):
+        print("Moving forward 100 cm...")
+        move_cmd = Twist()
+        move_cmd.linear.x = self.linear_speed
+        move_cmd.angular.z = 0.0
+
+        duration = self.distance / self.linear_speed  # 1.0 / 0.2 = 5 s
+        self.publish_twist(move_cmd, duration)
+
+    def move_sequence(self):
+        self.move_forward_100cm()
+        self.stop_turtlebot()
+
+
+def main():
+    controller = TurtlebotController()
+    try:
+        controller.move_sequence()
+    except rospy.ROSInterruptException:
+        pass
 
 
 if __name__ == "__main__":
-    rospy.init_node("turtlebot3_cliff")
-    try:
-        cliff = Cliff()
-        while not rospy.is_shutdown():
-            sleep(0.1)
-    except rospy.ROSInterruptException:
-        pass
+    main()
